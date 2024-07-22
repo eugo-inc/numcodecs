@@ -133,12 +133,14 @@ def zstd_extension():
     define_macros = []
 
     # setup sources - use zstd bundled in blosc
-    zstd_sources += glob('c-blosc/internal-complibs/zstd*/common/*.c')
-    zstd_sources += glob('c-blosc/internal-complibs/zstd*/compress/*.c')
-    zstd_sources += glob('c-blosc/internal-complibs/zstd*/decompress/*.c')
-    zstd_sources += glob('c-blosc/internal-complibs/zstd*/dictBuilder/*.c')
+    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/common/*.c')
+    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/compress/*.c')
+    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/decompress/*.c')
+    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/dictBuilder/*.c')
     include_dirs += [d for d in glob('c-blosc/internal-complibs/zstd*') if os.path.isdir(d)]
     include_dirs += [d for d in glob('c-blosc/internal-complibs/zstd*/*') if os.path.isdir(d)]
+    include_dirs += "/usr"
+    include_dirs += "/usr/local"
     # define_macros += [('CYTHON_TRACE', '1')]
 
     sources = ['numcodecs/zstd.pyx']
@@ -160,6 +162,7 @@ def zstd_extension():
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
             extra_objects=extra_objects,
+            libraries=["zstd"]
         ),
     ]
 
