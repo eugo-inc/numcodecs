@@ -54,26 +54,37 @@ def blosc_extension():
     extra_compile_args = base_compile_args.copy()
     define_macros = []
 
+    # Don't use the bundled blosc sources; we use our system libraries
+    blosc_sources = []
+
     # setup blosc sources
-    blosc_sources = [f for f in glob('c-blosc/blosc/*.c') if 'avx2' not in f and 'sse2' not in f]
+    # @HELP
+    # blosc_sources = [f for f in glob('c-blosc/blosc/*.c') if 'avx2' not in f and 'sse2' not in f]
     include_dirs = [os.path.join('c-blosc', 'blosc')]
 
-    # add internal complibs
-    blosc_sources += glob('c-blosc/internal-complibs/lz4*/*.c')
-    blosc_sources += glob('c-blosc/internal-complibs/snappy*/*.cc')
-    blosc_sources += glob('c-blosc/internal-complibs/zlib*/*.c')
-    blosc_sources += glob('c-blosc/internal-complibs/zstd*/common/*.c')
-    blosc_sources += glob('c-blosc/internal-complibs/zstd*/compress/*.c')
-    blosc_sources += glob('c-blosc/internal-complibs/zstd*/decompress/*.c')
-    blosc_sources += glob('c-blosc/internal-complibs/zstd*/dictBuilder/*.c')
+    # Don't use the bundled blosc sources; we use our system libraries
+    # blosc_sources += glob('c-blosc/internal-complibs/lz4*/*.c')
+    # blosc_sources += glob('c-blosc/internal-complibs/snappy*/*.cc')
+    # blosc_sources += glob('c-blosc/internal-complibs/zlib*/*.c')
+    # blosc_sources += glob('c-blosc/internal-complibs/zstd*/common/*.c')
+    # blosc_sources += glob('c-blosc/internal-complibs/zstd*/compress/*.c')
+    # blosc_sources += glob('c-blosc/internal-complibs/zstd*/decompress/*.c')
+    # blosc_sources += glob('c-blosc/internal-complibs/zstd*/dictBuilder/*.c')
     include_dirs += [d for d in glob('c-blosc/internal-complibs/*') if os.path.isdir(d)]
     include_dirs += [d for d in glob('c-blosc/internal-complibs/*/*') if os.path.isdir(d)]
     include_dirs += [d for d in glob('c-blosc/internal-complibs/*/*/*') if os.path.isdir(d)]
     # remove minizip because Python.h 3.8 tries to include crypt.h
     include_dirs = [d for d in include_dirs if 'minizip' not in d]
+
+    # Add system include directories
+    include_dirs += "/usr"
+    include_dirs += "/usr/local"
+
     define_macros += [
         ('HAVE_LZ4', 1),
-        # ('HAVE_SNAPPY', 1),
+        # Change to default include snappy
+        # @HELP
+        ('HAVE_SNAPPY', 1),
         ('HAVE_ZLIB', 1),
         ('HAVE_ZSTD', 1),
     ]
@@ -83,6 +94,7 @@ def blosc_extension():
     if have_sse2 and not disable_sse2:
         info('compiling Blosc extension with SSE2 support')
         extra_compile_args.append('-DSHUFFLE_SSE2_ENABLED')
+        # @HELP
         blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'sse2' in f]
         if os.name == 'nt':
             define_macros += [('__SSE2__', 1)]
@@ -93,6 +105,7 @@ def blosc_extension():
     if have_avx2 and not disable_avx2:
         info('compiling Blosc extension with AVX2 support')
         extra_compile_args.append('-DSHUFFLE_AVX2_ENABLED')
+        # @HELP
         blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'avx2' in f]
         if os.name == 'nt':
             define_macros += [('__AVX2__', 1)]
@@ -107,6 +120,7 @@ def blosc_extension():
     else:
         extra_objects = []
 
+    # @HELP
     sources = ['numcodecs/blosc.pyx']
 
     # define extension module
@@ -132,17 +146,21 @@ def zstd_extension():
     include_dirs = []
     define_macros = []
 
-    # setup sources - use zstd bundled in blosc
+    # Don't use the bundled zstd sources; we use our system libraries
     #zstd_sources += glob('c-blosc/internal-complibs/zstd*/common/*.c')
     #zstd_sources += glob('c-blosc/internal-complibs/zstd*/compress/*.c')
     #zstd_sources += glob('c-blosc/internal-complibs/zstd*/decompress/*.c')
     #zstd_sources += glob('c-blosc/internal-complibs/zstd*/dictBuilder/*.c')
+
     include_dirs += [d for d in glob('c-blosc/internal-complibs/zstd*') if os.path.isdir(d)]
     include_dirs += [d for d in glob('c-blosc/internal-complibs/zstd*/*') if os.path.isdir(d)]
+
+    # Add system include directories
     include_dirs += "/usr"
     include_dirs += "/usr/local"
     # define_macros += [('CYTHON_TRACE', '1')]
 
+    # @HELP
     sources = ['numcodecs/zstd.pyx']
 
     # include assembly files
@@ -162,7 +180,7 @@ def zstd_extension():
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
             extra_objects=extra_objects,
-            libraries=["zstd"]
+            libraries=["blosc", "zstd", "lz4", "snappy", "zlib"],
         ),
     ]
 
@@ -174,13 +192,19 @@ def lz4_extension():
 
     extra_compile_args = base_compile_args.copy()
     define_macros = []
+    lz4_sources = []
 
-    # setup sources - use LZ4 bundled in blosc
-    lz4_sources = glob('c-blosc/internal-complibs/lz4*/*.c')
+    # Don't use the bundled lz4 sources; we use our system libraries
+    # lz4_sources = glob('c-blosc/internal-complibs/lz4*/*.c')
     include_dirs = [d for d in glob('c-blosc/internal-complibs/lz4*') if os.path.isdir(d)]
     include_dirs += ['numcodecs']
+
+    # Add system include directories
+    include_dirs += "/usr"
+    include_dirs += "/usr/local"
     # define_macros += [('CYTHON_TRACE', '1')]
 
+    # @HELP
     sources = ['numcodecs/lz4.pyx']
 
     # define extension module
