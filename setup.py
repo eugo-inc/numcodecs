@@ -14,6 +14,11 @@ cpu_info = cpuinfo.get_cpu_info()
 flags = cpu_info.get('flags', [])
 have_sse2 = 'sse2' in flags
 have_avx2 = 'avx2' in flags
+
+# MARK: - Eugo add flags for NEON and ACLE
+have_neon = 'neon' in flags
+have_acle = 'acle' in flags
+
 disable_sse2 = 'DISABLE_NUMCODECS_SSE2' in os.environ
 disable_avx2 = 'DISABLE_NUMCODECS_AVX2' in os.environ
 
@@ -32,6 +37,12 @@ elif os.name == 'posix':
         base_compile_args.append('-mno-avx2')
     elif have_avx2:
         base_compile_args.append('-mavx2')
+    # @HELP - # MARK: - Eugo add append flags for NEON and ACE
+    elif have_neon:
+        base_compile_args.append("-march=armv8-a -mtune=cortex-a72 -moutline-atomics")
+    elif have_acle:
+        base_compile_args.append("-march=armv8-a -mtune=cortex-a72 -moutline-atomics")
+
 # On macOS, force libc++ in case the system tries to use `stdlibc++`.
 # The latter is often absent from modern macOS systems.
 if sys.platform == 'darwin':
@@ -56,13 +67,13 @@ def blosc_extension():
 
     # Don't use the bundled blosc sources; we use our system libraries
     blosc_sources = []
+    include_dirs = []
 
-    # setup blosc sources
     # @HELP
     # blosc_sources = [f for f in glob('c-blosc/blosc/*.c') if 'avx2' not in f and 'sse2' not in f]
-    include_dirs = [os.path.join('c-blosc', 'blosc')]
+    # include_dirs = [os.path.join('c-blosc', 'blosc')]
 
-    # Don't use the bundled blosc sources; we use our system libraries
+    # MARK: - Don't use the bundled blosc sources; we use our system libraries
     # blosc_sources += glob('c-blosc/internal-complibs/lz4*/*.c')
     # blosc_sources += glob('c-blosc/internal-complibs/snappy*/*.cc')
     # blosc_sources += glob('c-blosc/internal-complibs/zlib*/*.c')
@@ -90,27 +101,45 @@ def blosc_extension():
     ]
     # define_macros += [('CYTHON_TRACE', '1')]
 
-    # SSE2
+    # MARK: - SSE2
     if have_sse2 and not disable_sse2:
         info('compiling Blosc extension with SSE2 support')
         extra_compile_args.append('-DSHUFFLE_SSE2_ENABLED')
         # @HELP
-        blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'sse2' in f]
+        # blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'sse2' in f]
         if os.name == 'nt':
             define_macros += [('__SSE2__', 1)]
     else:
         info('compiling Blosc extension without SSE2 support')
 
-    # AVX2
+    # MARK: - AVX2
     if have_avx2 and not disable_avx2:
         info('compiling Blosc extension with AVX2 support')
         extra_compile_args.append('-DSHUFFLE_AVX2_ENABLED')
         # @HELP
-        blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'avx2' in f]
+        # blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'avx2' in f]
         if os.name == 'nt':
             define_macros += [('__AVX2__', 1)]
     else:
         info('compiling Blosc extension without AVX2 support')
+
+    # MARK: - NEON
+    # @HELP
+    if have_neon:
+        info('compiling Blosc extension with NEON support')
+        extra_compile_args.append('-DNEON_INTRINSICS')
+        # blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'neon' in f]
+    else:
+        info('compiling Blosc extension without NEON support')
+
+    # MARK: - ACLE
+    # @HELP
+    if have_acle:
+        info('compiling Blosc extension with ACLE support')
+        extra_compile_args.append('-DARM_ACLE')
+        # blosc_sources += [f for f in glob('c-blosc/blosc/*.c') if 'acle' in f]
+    else:
+        info('compiling Blosc extension without acle support')
 
     # include assembly files
     if cpuinfo.platform.machine() == 'x86_64':
@@ -120,7 +149,7 @@ def blosc_extension():
     else:
         extra_objects = []
 
-    # @HELP
+    # MARK: - Add numcodecs/blosc, numcodecs/zlib, and numcodecs/snappy sources
     sources = ['numcodecs/blosc.pyx']
 
     # define extension module
@@ -132,6 +161,8 @@ def blosc_extension():
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
             extra_objects=extra_objects,
+            # MARK: - Add Blosc library for linker to look for
+            libraries=["blosc", "snappy", "zlib"],
         ),
     ]
 
@@ -146,21 +177,21 @@ def zstd_extension():
     include_dirs = []
     define_macros = []
 
-    # Don't use the bundled zstd sources; we use our system libraries
-    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/common/*.c')
-    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/compress/*.c')
-    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/decompress/*.c')
-    #zstd_sources += glob('c-blosc/internal-complibs/zstd*/dictBuilder/*.c')
+    # MARK: - Don't use the bundled zstd sources; we use our system libraries
+    # zstd_sources += glob('c-blosc/internal-complibs/zstd*/common/*.c')
+    # zstd_sources += glob('c-blosc/internal-complibs/zstd*/compress/*.c')
+    # zstd_sources += glob('c-blosc/internal-complibs/zstd*/decompress/*.c')
+    # zstd_sources += glob('c-blosc/internal-complibs/zstd*/dictBuilder/*.c')
 
     include_dirs += [d for d in glob('c-blosc/internal-complibs/zstd*') if os.path.isdir(d)]
     include_dirs += [d for d in glob('c-blosc/internal-complibs/zstd*/*') if os.path.isdir(d)]
 
-    # Add system include directories
+    # MARK: - Add system include directories
     include_dirs += "/usr"
     include_dirs += "/usr/local"
     # define_macros += [('CYTHON_TRACE', '1')]
 
-    # @HELP
+    # MARK: - Add numcodecs/zstd sources
     sources = ['numcodecs/zstd.pyx']
 
     # include assembly files
@@ -180,7 +211,8 @@ def zstd_extension():
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
             extra_objects=extra_objects,
-            libraries=["blosc", "zstd", "lz4", "snappy", "zlib"],
+            # MARK: - Add ZSTD library for linker to look for
+            libraries=["zstd"],
         ),
     ]
 
@@ -194,17 +226,17 @@ def lz4_extension():
     define_macros = []
     lz4_sources = []
 
-    # Don't use the bundled lz4 sources; we use our system libraries
+    # MARK: - Don't use the bundled lz4 sources; we use our system libraries
     # lz4_sources = glob('c-blosc/internal-complibs/lz4*/*.c')
     include_dirs = [d for d in glob('c-blosc/internal-complibs/lz4*') if os.path.isdir(d)]
     include_dirs += ['numcodecs']
 
-    # Add system include directories
+    # MARK: - Add system include directories
     include_dirs += "/usr"
     include_dirs += "/usr/local"
     # define_macros += [('CYTHON_TRACE', '1')]
 
-    # @HELP
+    # MARK: - Add numcodecs/lz4 sources
     sources = ['numcodecs/lz4.pyx']
 
     # define extension module
@@ -215,6 +247,8 @@ def lz4_extension():
             include_dirs=include_dirs,
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
+            # MARK: - Add lz4 library for linker to look for
+            libraries=["lz4"],
         ),
     ]
 
